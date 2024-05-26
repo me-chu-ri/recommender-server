@@ -1,11 +1,11 @@
 import numpy as np
 from collections import Counter
 
-from .norms import Norm
+from .norms import Norm, L2Norm
 
 
 class KNN:
-    def __init__(self, k_value: int, dist_strategy: Norm, dim: int):
+    def __init__(self, dim: int, k_value: int = 3, dist_strategy: Norm = L2Norm()):
         self.K = k_value
         self.norm = dist_strategy
         self.dim = dim

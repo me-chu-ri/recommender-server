@@ -2,7 +2,7 @@ import numpy as np
 
 
 class EASEr:
-    def __init__(self, _lambda):
+    def __init__(self, _lambda: int = 300):
         self.B: np.ndarray = np.array([])
         self._lambda = _lambda
 
