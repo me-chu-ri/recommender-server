@@ -6,8 +6,8 @@ class EASEr:
         self.B = None
         self._lambda = _lambda
 
-    def train(self, X):
+    def fit(self, X):
         pass
 
-    def recommend(self, user_row):
+    def predict(self, user_row):
         pass
