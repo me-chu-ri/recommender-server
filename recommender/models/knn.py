@@ -1,7 +1,7 @@
 import numpy as np
 from collections import Counter
 
-from .norms import Norm, L2Norm
+from ..methods.norms import Norm, L2Norm
 
 
 class KNN:
