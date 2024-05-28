@@ -7,7 +7,11 @@ class Normalizers:
         """
             X - Min(X) / Max(X) - Min(X)
         """
-        return (vec - min(vec)) / (max(vec) - min(vec))
+        return Normalizers.min_max_specified_normalization(vec, min(vec), max(vec))
+
+    @staticmethod
+    def min_max_specified_normalization(vec: np.ndarray, _min: float, _max: float) -> np.ndarray:
+        return (vec - _min) / (_max - _min)
 
     @staticmethod
     def standardize(vec: np.ndarray) -> np.ndarray:
