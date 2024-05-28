@@ -1,7 +1,7 @@
 import numpy as np
 from collections import Counter
 
-from recommenders.methods.norms import Norm, L2Norm
+from recommenders.methods import Norm, L2Norm
 
 
 class KNN:
