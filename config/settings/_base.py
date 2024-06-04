@@ -18,8 +18,16 @@ ALLOWED_HOSTS = []
 
 # Application definition
 INSTALLED_APPS = [
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'rest_framework',
     'mechuri',
 ]
+
+# MIGRATION_MODULES = {
+#     'auth': None,
+#     'contenttypes': None
+# }
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

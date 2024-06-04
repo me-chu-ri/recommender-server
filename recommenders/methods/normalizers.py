@@ -14,6 +14,10 @@ class Normalizers:
         return (vec - _min) / (_max - _min)
 
     @staticmethod
+    def min_max_for_scalar(data: float, _min: float, _max: float) -> float:
+        return (data - _min) / (_max - _min)
+
+    @staticmethod
     def standardize(vec: np.ndarray) -> np.ndarray:
         """
             X - Mean(X) / Std
