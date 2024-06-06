@@ -27,7 +27,7 @@ def get_recommend_personal(request, data: GetRecommendDto):
 def get_recommend_group(request, data: GetRecommendDto):
     try:
         res = model_service.get_group_recommend(data)
-        return  DtoResponse.response(res)
+        return DtoResponse.response(res)
     except Exception as e:
         return ErrorResponse.response(e, 500)
 

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import numpy as np
 
 
@@ -7,7 +9,7 @@ class EASEr:
         self._lambda = _lambda
 
     def fit(self, X: np.ndarray):
-        G: np.ndarray = X.T @ X
+        G: np.ndarray = X.astype(float).T @ X.astype(float)
         diag_indices = np.diag_indices_from(G)
         G[diag_indices] += self._lambda
         P: np.ndarray = np.linalg.inv(G)
@@ -15,4 +17,4 @@ class EASEr:
         self.B[diag_indices] = 0
 
     def predict(self, user_row: np.ndarray) -> np.ndarray:
-        return user_row @ self.B
+        return (user_row.astype(float) @ self.B)[0]

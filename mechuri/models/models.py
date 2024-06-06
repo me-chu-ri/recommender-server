@@ -1,36 +1,23 @@
 from django.db import models
 
-from .managers import PersonalKnnWeatherManager, GroupKnnWeatherManager, GroupMenuPeriodicityManager, \
-    PersonalMenuPeriodicityManager, GroupMenuInteractionManager, PersonalMenuInteractionManager, GroupKnnLocManager, \
-    PersonalKnnLocManager, MenuManager, UserManager, GroupManager
+from .managers import *
 
 
 class CommentReport(models.Model):
     reporter = models.ForeignKey('User', models.DO_NOTHING)
     comment = models.ForeignKey('RecipeComment', models.DO_NOTHING)
     type = models.IntegerField()
-    reported_at = models.DateTimeField(blank=True, null=True)
+    reported_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         managed = False
         db_table = 'comment_report'
 
 
-class DjangoMigrations(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    app = models.CharField(max_length=255)
-    name = models.CharField(max_length=255)
-    applied = models.DateTimeField()
-
-    class Meta:
-        managed = False
-        db_table = 'django_migrations'
-
-
 class Friend(models.Model):
-    accepted_at = models.DateTimeField()
-    requestor = models.ForeignKey('User', models.DO_NOTHING, related_name='friend_requested', blank=True, null=True)
-    receiver = models.ForeignKey('User', models.DO_NOTHING, related_name='friend_received', blank=True, null=True)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+    requestor = models.ForeignKey('User', models.DO_NOTHING, related_name='friend_requestor', blank=True, null=True)
+    receiver = models.ForeignKey('User', models.DO_NOTHING, related_name='friend_receiver', blank=True, null=True)
 
     class Meta:
         managed = False
@@ -38,9 +25,9 @@ class Friend(models.Model):
 
 
 class FriendRequest(models.Model):
-    requested_at = models.DateTimeField()
-    requestor = models.ForeignKey('User', models.DO_NOTHING, related_name='temp_requested', blank=True, null=True)
-    receiver = models.ForeignKey('User', models.DO_NOTHING, related_name='temp_received', blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    requestor = models.ForeignKey('User', models.DO_NOTHING, related_name='requestor', blank=True, null=True)
+    receiver = models.ForeignKey('User', models.DO_NOTHING, related_name='receiver', blank=True, null=True)
 
     class Meta:
         managed = False
@@ -50,10 +37,11 @@ class FriendRequest(models.Model):
 class Group(models.Model):
     group_uuid = models.CharField(max_length=36, db_collation='utf8_bin')
     name = models.CharField(max_length=30)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey('User', models.DO_NOTHING, blank=True, null=True)
 
     objects: GroupManager = GroupManager()
+
     class Meta:
         managed = False
         db_table = 'group'
@@ -62,9 +50,9 @@ class Group(models.Model):
 class GroupKnnLoc(models.Model):
     group = models.ForeignKey(Group, models.DO_NOTHING)
     menu = models.ForeignKey('Menu', models.DO_NOTHING)
-    lat = models.FloatField(blank=True, null=True)
-    long = models.FloatField(blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
+    lat = models.FloatField()
+    long = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     objects: GroupKnnLocManager = GroupKnnLocManager()
 
@@ -79,7 +67,7 @@ class GroupKnnWeather(models.Model):
     temp = models.FloatField()
     precip = models.FloatField()
     humid = models.FloatField()
-    created_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     objects: GroupKnnWeatherManager = GroupKnnWeatherManager()
 
@@ -91,8 +79,8 @@ class GroupKnnWeather(models.Model):
 class GroupMenuInteraction(models.Model):
     group = models.ForeignKey(Group, models.DO_NOTHING)
     menu = models.ForeignKey('Menu', models.DO_NOTHING)
-    rating = models.DecimalField(max_digits=10, decimal_places=9, blank=True, null=True)
-    last_interacted_at = models.DateTimeField(blank=True, null=True)
+    rating = models.DecimalField(max_digits=10, decimal_places=9)
+    last_interacted_at = models.DateTimeField(auto_now=True)
 
     objects: GroupMenuInteractionManager = GroupMenuInteractionManager()
 
@@ -104,9 +92,9 @@ class GroupMenuInteraction(models.Model):
 class GroupMenuPeriodicity(models.Model):
     group = models.ForeignKey(Group, models.DO_NOTHING)
     menu = models.ForeignKey('Menu', models.DO_NOTHING)
-    periodicity = models.DecimalField(max_digits=10, decimal_places=9, blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    periodicity = models.DecimalField(max_digits=10, decimal_places=9)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects: GroupMenuPeriodicityManager = GroupMenuPeriodicityManager()
 
@@ -117,9 +105,9 @@ class GroupMenuPeriodicity(models.Model):
 
 class GroupRequest(models.Model):
     group_uuid = models.CharField(max_length=36, db_collation='utf8_bin')
-    requested_at = models.DateTimeField()
-    requestor = models.ForeignKey('User', models.DO_NOTHING, related_name='group_requested', blank=True, null=True)
-    receiver = models.ForeignKey('User', models.DO_NOTHING, related_name='group_received', blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    requestor = models.ForeignKey('User', models.DO_NOTHING, related_name='group_requestor', blank=True, null=True)
+    receiver = models.ForeignKey('User', models.DO_NOTHING, related_name='group_receiver', blank=True, null=True)
 
     class Meta:
         managed = False
@@ -166,9 +154,9 @@ class Nutrient(models.Model):
 class PersonalKnnLoc(models.Model):
     user = models.ForeignKey('User', models.DO_NOTHING)
     menu = models.ForeignKey(Menu, models.DO_NOTHING)
-    lat = models.FloatField(blank=True, null=True)
-    long = models.FloatField(blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
+    lat = models.FloatField()
+    long = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     objects: PersonalKnnLocManager = PersonalKnnLocManager()
 
@@ -183,7 +171,7 @@ class PersonalKnnWeather(models.Model):
     temp = models.FloatField()
     precip = models.FloatField()
     humid = models.FloatField()
-    created_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     objects: PersonalKnnWeatherManager = PersonalKnnWeatherManager()
 
@@ -195,8 +183,8 @@ class PersonalKnnWeather(models.Model):
 class PersonalMenuInteraction(models.Model):
     user = models.ForeignKey('User', models.DO_NOTHING)
     menu = models.ForeignKey(Menu, models.DO_NOTHING)
-    rating = models.DecimalField(max_digits=10, decimal_places=9, blank=True, null=True)
-    last_interacted_at = models.DateTimeField(blank=True, null=True)
+    rating = models.DecimalField(max_digits=10, decimal_places=9)
+    last_interacted_at = models.DateTimeField(auto_now=True)
 
     objects: PersonalMenuInteractionManager = PersonalMenuInteractionManager()
 
@@ -208,9 +196,9 @@ class PersonalMenuInteraction(models.Model):
 class PersonalMenuPeriodicity(models.Model):
     user = models.ForeignKey('User', models.DO_NOTHING)
     menu = models.ForeignKey(Menu, models.DO_NOTHING)
-    periodicity = models.DecimalField(max_digits=10, decimal_places=9, blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    periodicity = models.DecimalField(max_digits=10, decimal_places=9)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects: PersonalMenuPeriodicityManager = PersonalMenuPeriodicityManager()
 
@@ -229,8 +217,8 @@ class Recipe(models.Model):
     duration = models.TimeField(blank=True, null=True)
     servings = models.IntegerField(blank=True, null=True)
     views = models.SmallIntegerField(blank=True, null=True)
-    uploaded_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         managed = False
@@ -242,7 +230,7 @@ class RecipeComment(models.Model):
     user = models.ForeignKey('User', models.DO_NOTHING)
     recipe = models.ForeignKey(Recipe, models.DO_NOTHING)
     content = models.TextField()
-    commented_at = models.DateTimeField(blank=True, null=True)
+    commented_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         managed = False
@@ -262,7 +250,7 @@ class RecipeReport(models.Model):
     reporter = models.ForeignKey('User', models.DO_NOTHING)
     recipe = models.ForeignKey(Recipe, models.DO_NOTHING)
     type = models.IntegerField()
-    reported_at = models.DateTimeField(blank=True, null=True)
+    reported_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         managed = False
@@ -302,8 +290,8 @@ class User(models.Model):
     email = models.CharField(unique=True, max_length=100)
     password = models.CharField(max_length=150)
     nickname = models.CharField(unique=True, max_length=15)
-    joined_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    joined_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     name = models.CharField(max_length=30, blank=True, null=True)
 

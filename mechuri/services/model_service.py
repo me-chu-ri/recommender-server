@@ -8,30 +8,42 @@ from recommenders.models import KNN, EASEr
 from recommenders.methods import Normalizers
 from ..core.patterns.singleton_cls import Singleton
 from ..dtos.requests.get_recommend_dto import GetRecommendDto
-from ..models.models import PersonalKnnWeather, PersonalMenuPeriodicity, Menu, User, PersonalMenuInteraction, Group, \
+from ..dtos.responses.menu_dto import MenuDto
+from ..models.models import Menu, User, PersonalMenuInteraction, Group, \
     GroupMenuInteraction
 
 
 class ModelService(metaclass=Singleton):
     def get_personal_recommend(self, data: GetRecommendDto):
-        # get interactions
+        menu_list = self._get_recommend(data, False)
+        recommended_menus = [MenuDto.from_entity(entity) for entity in Menu.objects.filter_menus_by_ids(menu_list)]
+        return recommended_menus
+
+    def get_group_recommend(self, data: GetRecommendDto):
+        menu_list = self._get_recommend(data, True)
+        recommended_menus = [MenuDto.from_entity(entity) for entity in Menu.objects.filter_menus_by_ids(menu_list)]
+        return recommended_menus
+
+    def _get_recommend(self, data: GetRecommendDto, is_group):
         interaction: pd.DataFrame = self._get_interaction_matrix()
 
+        # get interactions
         mat = interaction.values
         user_row = interaction.loc[[data.target_id], :].values
         ease_r_pred = self._get_ease_reverse_prediction(mat, user_row)
 
         # get weather knn
-        weather_pred: list = self._get_weather_knn_prediction(data.target_id, data.temp, data.precip, data.humid)
-        w_df: pd.DataFrame = pd.DataFrame(index=[data.target_id], columns=interaction.columns).fillna(0)
+        weather_pred: list = self._get_weather_knn_prediction(data.target_id, data.temp, data.precip, data.humid,
+                                                              is_group)
+        w_df: pd.Series = pd.Series(index=interaction.columns).fillna(0)
         for menu_id, cnt in weather_pred:
-            w_df.loc[:, [menu_id]] = cnt
+            w_df.loc[menu_id] = cnt
 
         # get periodicity
-        period_pred: dict = self._get_periodicity_prediction(data.target_id)
-        p_df: pd.DataFrame = pd.DataFrame(index=[data.target_id], columns=interaction.columns).fillna(0)
+        period_pred: dict = self._get_periodicity_prediction(data.target_id, is_group)
+        p_df: pd.Series = pd.Series(index=interaction.columns).fillna(0)
         for menu_id, value in period_pred.items():
-            p_df.loc[:, [menu_id]] = value
+            p_df.loc[menu_id] = value
 
         # combine
         ease_r = Normalizers.min_max_normalization(ease_r_pred)
@@ -39,14 +51,12 @@ class ModelService(metaclass=Singleton):
         weather = Normalizers.min_max_normalization(w_df.values)
 
         result = self._get_recommend_score([ease_r, period, weather])
-        max_idx = result.index(max(result))
-        max_menu_id = interaction.columns[max_idx]
+
+        max_ids = np.where(result == np.max(result))[0]
+        max_menus = [interaction.columns[idx] for idx in max_ids]
 
         # get the highest probability menu, return
-        pass
-
-    def get_group_recommend(self, data: GetRecommendDto):
-        pass
+        return max_menus
 
     def _get_interaction_matrix(self) -> pd.DataFrame:
         menus: QuerySet = Menu.objects.all()
@@ -101,7 +111,12 @@ class ModelService(metaclass=Singleton):
             periods = Group.objects.get_menu_periodicity_by_group_uuid(target_id)
         else:
             periods = User.objects.get_menu_periodicity_by_user_uuid(target_id)
-        days_after: dict = {item.menu.id: (datetime.datetime.now() - item.updated_at).days - item.periodicity for item in
+
+        if len(periods) == 0:
+            return {}
+
+        days_after: dict = {item.menu.id: (datetime.datetime.now() - item.updated_at).days - item.periodicity for item
+                            in
                             periods}
 
         res = dict(zip(days_after.keys(), Normalizers.min_max_normalization(np.array(list(days_after.values())))))
@@ -113,10 +128,10 @@ class ModelService(metaclass=Singleton):
         ease.fit(mat)
         return ease.predict(user_row)
 
-    def _get_recommend_score(self, factors: list) -> list:
+    def _get_recommend_score(self, factors: list) -> np.ndarray:
         factors = np.array(factors)
         try:
             factors.shape[1]
         except IndexError:
             raise ValueError("factors must have the same shape")
-        return list(Ensembler.basic_lists(factors))
+        return Ensembler.weighted_sum(factors, np.array([[0.5], [0.3], [0.2]]))

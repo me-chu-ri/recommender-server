@@ -79,5 +79,7 @@ class Dto:
             return {key: self.__serialize_field(value) for key, value in data.items()}
         elif isinstance(data, (int, float, bool, str)):
             return data
+        elif data is None:
+            return ''
         else:
             raise DtoFieldTypeError(_type=type(data), msg="{} is not serializable")

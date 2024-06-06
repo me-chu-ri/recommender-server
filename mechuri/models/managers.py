@@ -36,6 +36,9 @@ class GroupKnnLocManager(Manager):
 class MenuManager(Manager):
     use_for_related_fields = True
 
+    def filter_menus_by_ids(self, ids: list):
+        return self.filter(id__in=ids).select_related('nutrient')
+
 
 class UserManager(Manager):
     use_for_related_fields = True

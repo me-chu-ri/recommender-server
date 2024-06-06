@@ -11,8 +11,8 @@ class Ensembler:
         return probs.prod(axis=0)  # product rows
 
     @staticmethod
-    def weighted_sum(probs: np.ndarray, weights: np.ndarray) -> float:
-        if probs.shape != weights.shape:
-            raise ValueError("Shape of probs and weights must be the same")
+    def weighted_sum(probs: np.ndarray, weights: np.ndarray) -> np.ndarray:
+        if weights.shape != (probs.shape[0], 1):
+            raise ValueError("Shape of weights should be (probs.shape[0], 1)")
 
         return sum(probs * weights)
