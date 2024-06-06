@@ -4,10 +4,12 @@ import datetime
 from django.db.models import QuerySet
 
 from recommenders.ensembles.ensembler import Ensembler
-from recommenders.models import KNN, EASEr
+from recommenders.models import KNN, EASEr, EMA
 from recommenders.methods import Normalizers
 from ..core.patterns.singleton_cls import Singleton
 from ..dtos.requests.get_recommend_dto import GetRecommendDto
+from ..dtos.requests.post_interaction_dto import PostInteractionDto
+from ..dtos.responses.common_response import CommonResponse
 from ..dtos.responses.menu_dto import MenuDto
 from ..models.models import Menu, User, PersonalMenuInteraction, Group, \
     GroupMenuInteraction
@@ -23,6 +25,48 @@ class ModelService(metaclass=Singleton):
         menu_list = self._get_recommend(data, True)
         recommended_menus = [MenuDto.from_entity(entity) for entity in Menu.objects.filter_menus_by_ids(menu_list)]
         return recommended_menus
+
+    def post_interaction(self, data: PostInteractionDto, is_group: bool):
+        if is_group:
+            model = Group
+            target = Group.objects.get(group_uuid=data.target_id)
+            entity = GroupMenuInteraction
+        else:
+            model = User
+            target = User.objects.get(user_uuid=data.target_id)
+            entity = PersonalMenuInteraction
+
+        interactions = model.objects.get_interaction(data.target_id, data.menu_id)
+
+        if len(interactions) == 0:
+            menu: Menu = Menu.objects.get(id=data.menu_id)
+            entity.objects.create(
+                target,
+                menu,
+                data.rating
+            )
+            return CommonResponse(True, 'successfully created menu rating')
+
+        interaction = interactions[0]
+        ema = EMA()
+        rating = ema.update(interaction.rating, data.rating)
+
+        interaction.rating = rating
+        interaction.save(update_fields=["rating"])
+
+        return CommonResponse(True, 'successfully updated menu rating')
+
+    def delete_interaction_personal(self):
+        pass
+
+    def delete_interaction_group(self):
+        pass
+
+    def select_menu_personal(self):
+        pass
+
+    def select_menu_group(self):
+        pass
 
     def _get_recommend(self, data: GetRecommendDto, is_group):
         interaction: pd.DataFrame = self._get_interaction_matrix()
@@ -134,4 +178,4 @@ class ModelService(metaclass=Singleton):
             factors.shape[1]
         except IndexError:
             raise ValueError("factors must have the same shape")
-        return Ensembler.weighted_sum(factors, np.array([[0.5], [0.3], [0.2]]))
+        return Ensembler.weighted_sum(factors, np.array([[0.4], [0.3], [0.3]]))

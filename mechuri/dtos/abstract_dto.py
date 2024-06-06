@@ -80,6 +80,6 @@ class Dto:
         elif isinstance(data, (int, float, bool, str)):
             return data
         elif data is None:
-            return ''
+            return None
         else:
             raise DtoFieldTypeError(_type=type(data), msg="{} is not serializable")

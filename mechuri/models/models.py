@@ -1,6 +1,8 @@
 from django.db import models
 
-from .managers import *
+from .managers import GroupManager, GroupKnnLocManager, GroupKnnWeatherManager, GroupMenuInteractionManager, \
+    GroupMenuPeriodicityManager, MenuManager, PersonalKnnLocManager, PersonalKnnWeatherManager, \
+    PersonalMenuInteractionManager, PersonalMenuPeriodicityManager, UserManager
 
 
 class CommentReport(models.Model):

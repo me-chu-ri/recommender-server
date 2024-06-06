@@ -35,7 +35,8 @@ def get_recommend_group(request, data: GetRecommendDto):
 @deserialize
 def post_interaction_personal(request, data: PostInteractionDto):
     try:
-        pass
+        res = model_service.post_interaction(data, False)
+        return DtoResponse.response(res)
     except Exception as e:
         return ErrorResponse.response(e, 500)
 
@@ -43,7 +44,8 @@ def post_interaction_personal(request, data: PostInteractionDto):
 @deserialize
 def post_interaction_group(request, data: PostInteractionDto):
     try:
-        pass
+        res = model_service.post_interaction(data, True)
+        return DtoResponse.response(res)
     except Exception as e:
         return ErrorResponse.response(e, 500)
 

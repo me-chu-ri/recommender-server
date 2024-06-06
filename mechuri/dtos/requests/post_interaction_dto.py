@@ -5,7 +5,5 @@ from ..abstract_dto import Dto
 
 class PostInteractionDto(Dto):
     target_id: str
-    menu_id: str
+    menu_id: int
     rating: int
-    weather: WeatherDto
-    location: LocationDto
