@@ -9,7 +9,7 @@ from mechuri.responses.error_response import ErrorResponse
 def test_create(request):
     users = []
     groups = []
-    for i in range(10):
+    for i in range(2000):
         user = User.objects.create(
             user_uuid=f'test_user{i}',
             email=f'test{i}@gmail.com',
@@ -28,13 +28,13 @@ def test_create(request):
         if i == 0:
             m = [2, 3, 9, 57, 150, 192, 241, 272, 277, 280, 313]
         else:
-            m = [random.randint(1, 404) for _ in range(10)]
-        for menu_id in m:
+            m = [random.randint(1, 404) for _ in range(20)]
+        for i, menu_id in enumerate(m):
             menu = Menu.objects.get(id=menu_id)
             PersonalMenuInteraction.objects.create(
                 user=users[i],
                 menu=menu,
-                rating=1
+                rating=1 if i < (len(m) / 2) else -1
             )
 
     for i in range(len(groups)):
@@ -42,14 +42,14 @@ def test_create(request):
         #     m = [2, 3, 57, 241, 277, 313, 274, 359, 383, 393]
         # else:
         #     m = [random.randint(1, 404) for _ in range(10)]
-        m = [random.randint(1, 404) for _ in range(10)]
+        m = [random.randint(1, 404) for _ in range(20)]
 
-        for menu_id in m:
+        for i, menu_id in enumerate(m):
             menu = Menu.objects.get(id=menu_id)
             GroupMenuInteraction.objects.create(
                 group=groups[i],
                 menu=menu,
-                rating=1
+                rating=1 if i < (len(m) / 2) else -1
             )
 
     return HttpResponse('good')
@@ -57,7 +57,7 @@ def test_create(request):
 
 def test_delete(request):
     try:
-        for i in range(10):
+        for i in range(2000):
             user = User.objects.get(user_uuid=f'test_user{i}')
             group = Group.objects.get(group_uuid=f'test_group{i}')
 

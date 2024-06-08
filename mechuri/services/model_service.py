@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-import datetime
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from recommenders.ensembles.ensembler import Ensembler
 from recommenders.models import KNN, EASEr, EMA
@@ -69,23 +69,51 @@ class ModelService(metaclass=Singleton):
         pass
 
     def _get_recommend(self, data: GetRecommendDto, is_group):
-        interaction: pd.DataFrame = self._get_interaction_matrix()
+        interaction_df, target_series = self._get_interaction_matrix(data.target_id)
 
         # get interactions
-        mat = interaction.values
-        user_row = interaction.loc[[data.target_id], :].values
-        ease_r_pred = self._get_ease_reverse_prediction(mat, user_row)
+        mat = interaction_df.values
+        user_row = interaction_df.loc[[data.target_id], :].values
+        ease_r_pred: np.ndarray = self._get_ease_reverse_prediction(mat, user_row)
+
+        #
+        """
+        처음 좋아요 하면 interaction table에 데이터 생기고,
+        좋아요를 한거면 위 조건에 의해 더이상 추천될 수 없음
+        위 조건을 추가하지 않으면 데이터가 작아서인지 큰 가중치를 가져 해당 메뉴만 계속 추천됨
+        
+        상호작용이 있고 난 후엔 다른 메뉴를 추천해줘야함
+        
+        last_interaction 값을 이용해서 한번 상호작용이 있고 나면 금방 다시 추천될 확률은 0, 시간이 지남에 따라 올라가도록
+        
+        use target_series to use time information after last interaction
+        """
+
+        """
+        Temporal implementation
+        """
+        not_interacted = interaction_df.loc[data.target_id, :].apply(lambda x: x < 0.5)  # to remove (interaction > 0.5) (1 ~ -1)
+        exc_interacted: np.ndarray = not_interacted.astype(float).values * ease_r_pred
+
+        ## just remove already interacted menus
+        ease_r_pred: np.ndarray = exc_interacted
+
+        # print([interaction.columns[i] for i in np.argsort(ease_r_pred)])
+
+        ## weighted sum
+        # ease_r_pred = Ensembler.weighted_sum(np.array([exc_interacted, ease_r_pred]), np.array([[0.7], [0.3]]))
+        #
 
         # get weather knn
         weather_pred: list = self._get_weather_knn_prediction(data.target_id, data.temp, data.precip, data.humid,
                                                               is_group)
-        w_df: pd.Series = pd.Series(index=interaction.columns).fillna(0)
+        w_df: pd.Series = pd.Series(index=interaction_df.columns).fillna(0)
         for menu_id, cnt in weather_pred:
             w_df.loc[menu_id] = cnt
 
         # get periodicity
         period_pred: dict = self._get_periodicity_prediction(data.target_id, is_group)
-        p_df: pd.Series = pd.Series(index=interaction.columns).fillna(0)
+        p_df: pd.Series = pd.Series(index=interaction_df.columns).fillna(0)
         for menu_id, value in period_pred.items():
             p_df.loc[menu_id] = value
 
@@ -97,12 +125,12 @@ class ModelService(metaclass=Singleton):
         result = self._get_recommend_score([ease_r, period, weather])
 
         max_ids = np.where(result == np.max(result))[0]
-        max_menus = [interaction.columns[idx] for idx in max_ids]
+        max_menus = [interaction_df.columns[idx] for idx in max_ids]
 
         # get the highest probability menu, return
         return max_menus
 
-    def _get_interaction_matrix(self) -> pd.DataFrame:
+    def _get_interaction_matrix(self, target_uuid: str = '') -> tuple:
         menus: QuerySet = Menu.objects.all()
 
         users: QuerySet = User.objects.all()
@@ -117,13 +145,19 @@ class ModelService(metaclass=Singleton):
 
         df: pd.DataFrame = pd.DataFrame(index=target_list, columns=menu_list).fillna(0.0)
 
+        inter_series: pd.Series = pd.Series(index=menu_list).fillna(0)
+
         for inter in personal_inter:
             df.loc[inter.user.user_uuid, inter.menu.id] = inter.rating
+            if inter.user.user_uuid == target_uuid:
+                inter_series[inter.menu.id] = timezone.now() - inter.last_interacted_at
 
         for inter in group_inter:
             df.loc[inter.group.group_uuid, inter.menu.id] = inter.rating
+            if inter.group.group_uuid == target_uuid:
+                inter_series[inter.menu.id] = timezone.now() - inter.last_interacted_at
 
-        return df  # row - user or group uuid, column - menu id
+        return df, inter_series  # row - user or group uuid, column - menu id
 
     def _get_weather_knn_prediction(self, target_id, temp, precip, humid, is_group: bool = False) -> list:
         # weathers: QuerySet = PersonalKnnWeather.objects.get_weather_selection(target_id)
@@ -159,7 +193,7 @@ class ModelService(metaclass=Singleton):
         if len(periods) == 0:
             return {}
 
-        days_after: dict = {item.menu.id: (datetime.datetime.now() - item.updated_at).days - item.periodicity for item
+        days_after: dict = {item.menu.id: (timezone.now() - item.updated_at).days - item.periodicity for item
                             in
                             periods}
 
@@ -168,7 +202,7 @@ class ModelService(metaclass=Singleton):
         return res  # {menu_id: normalized days after last selected
 
     def _get_ease_reverse_prediction(self, mat, user_row):
-        ease: EASEr = EASEr()
+        ease: EASEr = EASEr(_lambda=100)
         ease.fit(mat)
         return ease.predict(user_row)
 
